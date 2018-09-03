@@ -1,0 +1,69 @@
+/* query 1 - insight 1 */
+SELECT Genre.Name,
+       SUM(InvoiceLine.Quantity) AS CopiesSold
+FROM Genre
+INNER JOIN Track ON Genre.GenreId = Track.GenreId
+INNER JOIN InvoiceLine ON Track.TrackId = InvoiceLine.TrackId
+GROUP BY Genre.Name
+ORDER BY SUM(InvoiceLine.Quantity) DESC
+LIMIT 5
+
+
+/* query 2 - insight 2 */
+SELECT Genre.Name,
+       strftime('%Y', Invoice.InvoiceDate) AS YEAR,
+       SUM(InvoiceLine.Quantity) AS CopiesSold
+FROM Genre
+INNER JOIN Track ON Genre.GenreId = Track.GenreId
+INNER JOIN InvoiceLine ON Track.TrackId = InvoiceLine.TrackId
+INNER JOIN Invoice ON InvoiceLine.InvoiceId = Invoice.InvoiceId
+WHERE Genre.GenreId IN
+    (SELECT Genre.GenreId
+     FROM Genre
+     INNER JOIN Track ON Genre.GenreId = Track.GenreId
+     INNER JOIN InvoiceLine ON Track.TrackId = InvoiceLine.TrackId
+     GROUP BY Genre.Name
+     ORDER BY SUM(InvoiceLine.Quantity) DESC
+     LIMIT 5)
+GROUP BY Genre.Name,
+         strftime('%Y', Invoice.InvoiceDate)
+ORDER BY Genre.Name,
+         strftime('%Y', Invoice.InvoiceDate)
+		 
+		 
+/* query 3 - insight 3 */		 
+SELECT Customer.Country,
+       SUM(InvoiceLine.Quantity) AS CopiesSold
+FROM Customer
+INNER JOIN Invoice ON Invoice.CustomerId = Customer.CustomerId
+INNER JOIN InvoiceLine ON Invoice.InvoiceId = InvoiceLine.InvoiceId
+INNER JOIN Track ON Track.TrackId = InvoiceLine.TrackId
+INNER JOIN Genre ON Genre.GenreId = Track.GenreId
+WHERE Genre.Name = 'Jazz'
+GROUP BY Customer.Country
+ORDER BY Customer.Country
+
+
+/* query 4 - insight 4 */
+WITH RECURSIVE grp AS
+  (SELECT Customer.State,
+          Genre.Name AS Genre,
+          SUM(InvoiceLine.Quantity) AS CopiesSold
+   FROM Customer
+   INNER JOIN Invoice ON Invoice.CustomerId = Customer.CustomerId
+   INNER JOIN InvoiceLine ON Invoice.InvoiceId = InvoiceLine.InvoiceId
+   INNER JOIN Track ON Track.TrackId = InvoiceLine.TrackId
+   INNER JOIN Genre ON Genre.GenreId = Track.GenreId
+   WHERE Customer.Country = 'USA'
+   GROUP BY Customer.State,
+            Genre.Name)
+			
+SELECT g.State,
+       g.Genre,
+       g.CopiesSold
+FROM grp g
+WHERE g.CopiesSold =
+    (SELECT MAX(gi.CopiesSold)
+     FROM grp gi
+     WHERE gi.State = g.State )
+ORDER BY g.State
